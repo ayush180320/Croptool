@@ -1,0 +1,34 @@
+<Window x:Class="VideoCropper.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Pro Video Cropper" Height="600" Width="800">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="100" />
+        </Grid.RowDefinitions>
+
+        <MediaElement x:Name="VideoPlayer" LoadedBehavior="Manual" Grid.Row="0" Stretch="Uniform"/>
+
+        <Canvas x:Name="CropCanvas" Grid.Row="0" Background="Transparent" 
+                MouseMove="Canvas_MouseMove" MouseUp="Canvas_MouseUp" SizeChanged="Canvas_SizeChanged">
+            
+            <Rectangle x:Name="LineTop" Height="4" Width="800" Fill="Red" Cursor="SizeNS" MouseDown="Line_MouseDown" Canvas.Top="50"/>
+            <Rectangle x:Name="LineBottom" Height="4" Width="800" Fill="Red" Cursor="SizeNS" MouseDown="Line_MouseDown" Canvas.Top="400"/>
+            <Rectangle x:Name="LineLeft" Width="4" Height="600" Fill="Red" Cursor="SizeWE" MouseDown="Line_MouseDown" Canvas.Left="50"/>
+            <Rectangle x:Name="LineRight" Width="4" Height="600" Fill="Red" Cursor="SizeWE" MouseDown="Line_MouseDown" Canvas.Left="700"/>
+        </Canvas>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Background="#222" HorizontalAlignment="Stretch">
+            <Button Content="Auto-Detect Crop" Width="120" Margin="10" Click="BtnAutoCrop_Click"/>
+            <Button Content="Export ProRes" Width="100" Margin="10" Click="BtnExport_Click"/>
+            
+            <TextBlock Foreground="White" VerticalAlignment="Center" Margin="20,0,0,0" FontSize="14">
+                <Run Text="Top: "/> <Run x:Name="TxtTop" Text="0"/>
+                <Run Text=" | Bottom: "/> <Run x:Name="TxtBottom" Text="0"/>
+                <Run Text=" | Left: "/> <Run x:Name="TxtLeft" Text="0"/>
+                <Run Text=" | Right: "/> <Run x:Name="TxtRight" Text="0"/>
+            </TextBlock>
+        </StackPanel>
+    </Grid>
+</Window>
