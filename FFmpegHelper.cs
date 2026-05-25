@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -7,10 +8,12 @@ namespace VideoCropper
 {
     public static class FFmpegHelper
     {
-        private static string ffmpegPath = "ffmpeg.exe"; // Ensure ffmpeg.exe is in the same folder as your built app
+        private static string ffmpegPath = Path.Combine(AppContext.BaseDirectory, "ffmpeg.exe");
 
         public static async Task<string> AutoDetectCropAsync(string inputPath)
         {
+            if (!File.Exists(ffmpegPath)) return $"Engine missing at: {ffmpegPath}";
+
             string cropValue = "No crop detected";
 
             ProcessStartInfo startInfo = new ProcessStartInfo
@@ -22,29 +25,23 @@ namespace VideoCropper
                 CreateNoWindow = true
             };
 
-            try
+            using (Process process = Process.Start(startInfo)!)
             {
-                using (Process process = Process.Start(startInfo)!)
-                {
-                    string output = await process.StandardError.ReadToEndAsync();
-                    
-                    Match match = Regex.Match(output, @"crop=\d+:\d+:\d+:\d+");
-                    if (match.Success)
-                    {
-                        cropValue = match.Value;
-                    }
-                }
+                string output = await process.StandardError.ReadToEndAsync();
+                Match match = Regex.Match(output, @"crop=\d+:\d+:\d+:\d+");
+                if (match.Success) cropValue = match.Value;
             }
-            catch (Exception ex)
-            {
-                return $"Error: Make sure ffmpeg.exe is installed. {ex.Message}";
-            }
-
             return cropValue;
         }
 
         public static void EncodeProRes(string inputPath, string outputPath, string cropFilter)
         {
+            if (!File.Exists(ffmpegPath))
+            {
+                System.Windows.MessageBox.Show("FFmpeg engine not found.");
+                return;
+            }
+
             ProcessStartInfo startInfo = new ProcessStartInfo
             {
                 FileName = ffmpegPath,
@@ -53,14 +50,7 @@ namespace VideoCropper
                 CreateNoWindow = false
             };
 
-            try
-            {
-                Process.Start(startInfo);
-            }
-            catch (Exception ex)
-            {
-                System.Windows.MessageBox.Show($"Failed to launch FFmpeg: {ex.Message}");
-            }
+            Process.Start(startInfo);
         }
     }
 }
