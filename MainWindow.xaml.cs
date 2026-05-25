@@ -3,13 +3,14 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Shapes;
 using System.Windows.Controls;
+using Microsoft.Win32; 
 
 namespace VideoCropper
 {
     public partial class MainWindow : Window
     {
         private Rectangle? activeLine = null;
-        private string videoFilePath = @"C:\video.mp4"; // Will be dynamic in a full app
+        private string videoFilePath = ""; 
 
         private double actualVideoWidth = 1920; 
         private double actualVideoHeight = 1080;
@@ -17,10 +18,24 @@ namespace VideoCropper
         public MainWindow()
         {
             InitializeComponent();
-            try {
+        }
+
+        private void BtnBrowse_Click(object sender, RoutedEventArgs e)
+        {
+            OpenFileDialog openFileDialog = new OpenFileDialog
+            {
+                Filter = "Video Files|*.mp4;*.mkv;*.mov;*.avi|All Files|*.*"
+            };
+
+            if (openFileDialog.ShowDialog() == true)
+            {
+                videoFilePath = openFileDialog.FileName;
+                TxtFilePath.Text = videoFilePath;
+                
                 VideoPlayer.Source = new Uri(videoFilePath);
                 VideoPlayer.Play();
-            } catch { } // Failsafe if default video doesn't exist yet
+                VideoPlayer.Pause(); 
+            }
         }
 
         private void Line_MouseDown(object sender, MouseButtonEventArgs e)
@@ -35,10 +50,10 @@ namespace VideoCropper
 
             Point mousePos = e.GetPosition(CropCanvas);
 
-            if (activeLine == LineTop) Canvas.SetTop(LineTop, mousePos.Y);
-            else if (activeLine == LineBottom) Canvas.SetTop(LineBottom, mousePos.Y);
-            else if (activeLine == LineLeft) Canvas.SetLeft(LineLeft, mousePos.X);
-            else if (activeLine == LineRight) Canvas.SetLeft(LineRight, mousePos.X);
+            if (activeLine == LineTop) Canvas.SetTop(LineTop, Math.Max(0, mousePos.Y));
+            else if (activeLine == LineBottom) Canvas.SetTop(LineBottom, Math.Min(CropCanvas.ActualHeight, mousePos.Y));
+            else if (activeLine == LineLeft) Canvas.SetLeft(LineLeft, Math.Max(0, mousePos.X));
+            else if (activeLine == LineRight) Canvas.SetLeft(LineRight, Math.Min(CropCanvas.ActualWidth, mousePos.X));
 
             CalculateCropValues();
         }
@@ -51,8 +66,10 @@ namespace VideoCropper
 
         private void Canvas_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            LineTop.Width = LineBottom.Width = CropCanvas.ActualWidth;
-            LineLeft.Height = LineRight.Height = CropCanvas.ActualHeight;
+            Canvas.SetTop(LineTop, 0);
+            Canvas.SetTop(LineBottom, CropCanvas.ActualHeight);
+            Canvas.SetLeft(LineLeft, 0);
+            Canvas.SetLeft(LineRight, CropCanvas.ActualWidth);
         }
 
         private void CalculateCropValues()
@@ -67,7 +84,6 @@ namespace VideoCropper
             int leftCrop = (int)(Canvas.GetLeft(LineLeft) * scaleX);
             int rightCrop = (int)(actualVideoWidth - (Canvas.GetLeft(LineRight) * scaleX));
 
-            // Prevent negative values from dragging out of bounds
             TxtTop.Text = Math.Max(0, topCrop).ToString();
             TxtBottom.Text = Math.Max(0, bottomCrop).ToString();
             TxtLeft.Text = Math.Max(0, leftCrop).ToString();
@@ -76,18 +92,39 @@ namespace VideoCropper
 
         private async void BtnAutoCrop_Click(object sender, RoutedEventArgs e)
         {
+            if (string.IsNullOrEmpty(videoFilePath))
+            {
+                MessageBox.Show("Please browse for a video file first.");
+                return;
+            }
+
             string cropString = await FFmpegHelper.AutoDetectCropAsync(videoFilePath);
-            MessageBox.Show($"FFmpeg detected crop: {cropString}");
+            MessageBox.Show($"FFmpeg detected the following crop format: {cropString}");
         }
 
         private void BtnExport_Click(object sender, RoutedEventArgs e)
         {
+            if (string.IsNullOrEmpty(videoFilePath))
+            {
+                MessageBox.Show("Please browse for a video file first.");
+                return;
+            }
+
             int width = (int)actualVideoWidth - int.Parse(TxtLeft.Text) - int.Parse(TxtRight.Text);
             int height = (int)actualVideoHeight - int.Parse(TxtTop.Text) - int.Parse(TxtBottom.Text);
             string ffmpegCropFilter = $"crop={width}:{height}:{TxtLeft.Text}:{TxtTop.Text}";
 
-            FFmpegHelper.EncodeProRes(videoFilePath, @"C:\output.mov", ffmpegCropFilter);
-            MessageBox.Show("Encoding started! Check your output folder.");
+            SaveFileDialog saveFileDialog = new SaveFileDialog
+            {
+                Filter = "MOV File|*.mov",
+                DefaultExt = ".mov"
+            };
+
+            if (saveFileDialog.ShowDialog() == true)
+            {
+                FFmpegHelper.EncodeProRes(videoFilePath, saveFileDialog.FileName, ffmpegCropFilter);
+                MessageBox.Show("Encoding started! A command window will open to show progress.");
+            }
         }
     }
 }
